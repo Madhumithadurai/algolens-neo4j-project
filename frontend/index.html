@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AlgoLens · Searching and graph algorithm analysis</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="fileBanner" class="banner" hidden>
+    This page was opened as a file. Start the backend (<code>python app.py</code>) and open
+    <a href="http://127.0.0.1:5000">http://127.0.0.1:5000</a> instead.
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="8" cy="30" r="5"/><circle cx="20" cy="10" r="5"/><circle cx="32" cy="30" r="5"/>
+        <path d="M11 26 17 14M23 14l6 12M13 30h14"/>
+      </svg>
+      <div>
+        <h1>AlgoLens</h1>
+        <p>Run, watch and compare searching and shortest-path algorithms</p>
+      </div>
+    </div>
+    <div id="dbStatus" class="status status-unknown" title="">Checking Neo4j…</div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab active" role="tab" data-tab="search" aria-selected="true">Searching</button>
+    <button class="tab" role="tab" data-tab="graph" aria-selected="false">Shortest paths</button>
+    <button class="tab" role="tab" data-tab="bench" aria-selected="false">Benchmark</button>
+    <button class="tab" role="tab" data-tab="experiments" aria-selected="false">Experiment history</button>
+    <button class="tab" role="tab" data-tab="about" aria-selected="false">Method</button>
+  </nav>
+
+  <main>
+    <!-- ================= SEARCHING ================= -->
+    <section id="tab-search" class="panel active" role="tabpanel">
+      <div class="workspace">
+        <aside class="controls">
+          <label class="field">Algorithm
+            <select id="sAlgo">
+              <option value="binary">Binary search</option>
+              <option value="avl">AVL tree search</option>
+            </select>
+          </label>
+          <p class="hint" id="sAlgoHint"></p>
+
+          <label class="field">Keys
+            <textarea id="sKeys" rows="4" spellcheck="false" placeholder="e.g. 4, 9, 15, 23"></textarea>
+          </label>
+          <div class="inline">
+            <label class="field grow">Random keys
+              <input type="number" id="sGenSize" value="31" min="1" max="200000">
+            </label>
+            <button id="sGenerate" class="btn">Generate</button>
+          </div>
+          <div class="inline">
+            <label class="field grow">Saved key list (Neo4j)
+              <select id="sDataset"><option value="">No saved lists</option></select>
+            </label>
+            <button id="sLoadDs" class="btn">Load</button>
+          </div>
+          <label class="field">Key to find
+            <input type="number" id="sTarget" step="any">
+          </label>
+          <label class="check"><input type="checkbox" id="sSave" checked> Record this run in Neo4j</label>
+          <div class="actions">
+            <button id="sRun" class="btn primary">Run search</button>
+            <button id="sSaveDs" class="btn quiet">Save keys to Neo4j</button>
+          </div>
+        </aside>
+
+        <div class="results">
+          <div id="sResult" class="summary empty">Choose keys and a key to find, then run the search.</div>
+          <div class="canvas-block">
+            <div class="canvas-head">
+              <h2>Step by step</h2>
+              <div id="sPlayer"></div>
+            </div>
+            <p id="sCaption" class="caption"></p>
+            <div id="sViz" class="canvas grid-paper"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= GRAPHS ================= -->
+    <section id="tab-graph" class="panel" role="tabpanel" hidden>
+      <div class="workspace">
+        <aside class="controls">
+          <label class="field">Algorithm
+            <select id="gAlgo">
+              <option value="dijkstra">Dijkstra</option>
+              <option value="bellman-ford">Bellman-Ford</option>
+              <option value="floyd-warshall">Floyd-Warshall</option>
+            </select>
+          </label>
+          <p class="hint" id="gAlgoHint"></p>
+
+          <label class="field">Edges, one per line: from to weight
+            <textarea id="gEdges" rows="8" spellcheck="false"></textarea>
+          </label>
+          <p id="gParseMsg" class="hint"></p>
+          <label class="check"><input type="checkbox" id="gDirected"> Directed edges</label>
+
+          <details class="gen">
+            <summary>Generate a random graph</summary>
+            <div class="two">
+              <label class="field">Vertices <input type="number" id="gV" value="8" min="1" max="2000"></label>
+              <label class="field">Density <input type="number" id="gDensity" value="0.3" min="0" max="1" step="0.05"></label>
+              <label class="field">Min weight <input type="number" id="gMinW" value="1" min="0"></label>
+              <label class="field">Max weight <input type="number" id="gMaxW" value="20" min="0"></label>
+            </div>
+            <label class="check"><input type="checkbox" id="gNeg"> Include negative weights (no negative cycle)</label>
+            <label class="check"><input type="checkbox" id="gNegCycle"> Plant a negative cycle</label>
+            <button id="gGenerate" class="btn">Generate graph</button>
+          </details>
+
+          <div class="inline">
+            <label class="field grow">Saved graph (Neo4j)
+              <select id="gDataset"><option value="">No saved graphs</option></select>
+            </label>
+            <button id="gLoadDs" class="btn">Load</button>
+          </div>
+
+          <div class="two">
+            <label class="field">Source <select id="gSource"></select></label>
+            <label class="field">Show path to <select id="gTarget"></select></label>
+          </div>
+          <label class="field">Timing repeats <input type="number" id="gRepeats" value="5" min="1" max="30"></label>
+          <label class="check"><input type="checkbox" id="gSave" checked> Record this run in Neo4j</label>
+          <div class="actions">
+            <button id="gRun" class="btn primary">Run algorithm</button>
+            <button id="gSaveDs" class="btn quiet">Save graph to Neo4j</button>
+          </div>
+        </aside>
+
+        <div class="results">
+          <div id="gResult" class="summary empty">Enter or load a graph, pick a source vertex and run.</div>
+          <div class="canvas-block">
+            <div class="canvas-head">
+              <h2>Step by step</h2>
+              <div id="gPlayer"></div>
+            </div>
+            <p id="gCaption" class="caption"></p>
+            <div class="graph-split">
+              <div id="gSvg" class="canvas grid-paper"></div>
+              <div id="gTable" class="side-table"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= BENCHMARK ================= -->
+    <section id="tab-bench" class="panel" role="tabpanel" hidden>
+      <div class="workspace">
+        <aside class="controls">
+          <label class="field">Compare
+            <select id="bCategory">
+              <option value="search">Searching algorithms</option>
+              <option value="graph">Shortest-path algorithms</option>
+            </select>
+          </label>
+          <fieldset class="field">
+            <legend>Algorithms</legend>
+            <div id="bAlgos" class="checks"></div>
+          </fieldset>
+          <label class="field"><span id="bSizesLabel">Input sizes (number of keys)</span>
+            <input type="text" id="bSizes">
+          </label>
+          <div class="two">
+            <label class="field">Repeats <input type="number" id="bRepeats" value="5" min="1" max="30"></label>
+            <label class="field">Random seed <input type="number" id="bSeed" value="42" min="0"></label>
+          </div>
+          <label class="field only-search">Searches per run
+            <input type="number" id="bQueries" value="1000" min="1" max="100000">
+          </label>
+          <div class="two only-graph" hidden>
+            <label class="field">Edge density <input type="number" id="bDensity" value="0.2" min="0.001" max="1" step="0.05"></label>
+            <label class="field">Weights
+              <select id="bWeights">
+                <option value="non-negative">Non-negative</option>
+                <option value="negative">With negative edges</option>
+              </select>
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="bSave" checked> Record results in Neo4j</label>
+          <div class="actions">
+            <button id="bRun" class="btn primary">Run benchmark</button>
+            <button id="bExport" class="btn quiet" disabled>Download CSV</button>
+          </div>
+          <p class="hint">Large sizes can take a minute, especially Floyd-Warshall and AVL tree building.</p>
+        </aside>
+
+        <div class="results">
+          <div id="bSummary" class="summary empty">Pick algorithms and sizes, then run the benchmark. Every size uses the same generated input for all selected algorithms.</div>
+          <div class="charts">
+            <figure class="chart-block"><figcaption id="bTimeTitle">Execution time</figcaption><div id="bChartTime"></div></figure>
+            <figure class="chart-block"><figcaption id="bMemTitle">Peak memory</figcaption><div id="bChartMem"></div></figure>
+          </div>
+          <div id="bTable" class="table-wrap"></div>
+          <div id="bEnv" class="env"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= EXPERIMENTS ================= -->
+    <section id="tab-experiments" class="panel" role="tabpanel" hidden>
+      <div class="toolbar">
+        <label class="field">Algorithm
+          <select id="eFilter">
+            <option value="">All algorithms</option>
+            <option value="binary">Binary search</option>
+            <option value="avl">AVL tree search</option>
+            <option value="dijkstra">Dijkstra</option>
+            <option value="bellman-ford">Bellman-Ford</option>
+            <option value="floyd-warshall">Floyd-Warshall</option>
+          </select>
+        </label>
+        <button id="eRefresh" class="btn">Refresh</button>
+        <button id="eExport" class="btn quiet" disabled>Download CSV</button>
+        <span id="eStatus" class="hint"></span>
+      </div>
+      <div id="eTable" class="table-wrap"></div>
+    </section>
+
+    <!-- ================= ABOUT ================= -->
+    <section id="tab-about" class="panel prose" role="tabpanel" hidden>
+      <h2>How measurements are taken</h2>
+      <p>All algorithms run in Python on the backend. The browser only sends input and draws the
+        returned steps, so drawing never affects the timings.</p>
+      <h3>Time</h3>
+      <p>Each run is timed with <code>time.perf_counter_ns()</code> while Python's garbage collector is
+        paused. The run is repeated and the <strong>median</strong> is reported, together with mean,
+        standard deviation, minimum and maximum. Step recording for the visualisation is switched off
+        during timing.</p>
+      <p>One search takes well under a microsecond, which is too short to time on its own. Single
+        searches are therefore timed as a loop of 1,000 identical searches and divided by 1,000.
+        Benchmarks time a batch of searches (half present keys, half absent) and report the time for
+        one search.</p>
+      <h3>Memory</h3>
+      <p>Memory is measured in a separate run under <code>tracemalloc</code>, which reports the peak
+        amount of memory Python allocated during the call. For AVL search this includes building the
+        tree, because the tree is extra memory the algorithm needs. Binary search works directly on the
+        sorted input, so its extra memory is close to zero.</p>
+      <h3>Database time</h3>
+      <p>When input is loaded from Neo4j, the load time is measured and shown separately as
+        “Neo4j load”. It is never added to the algorithm time.</p>
+      <h3>Correctness</h3>
+      <p>Benchmarks cross-check results: search hits are compared with Python set membership, and the
+        shortest distances of every graph algorithm are compared with the first algorithm that ran on
+        the same graph. The backend also has unit tests based on textbook examples (CLRS figures 24.4
+        and 25.4).</p>
+      <h3>Expected complexity</h3>
+      <table class="data">
+        <thead><tr><th>Algorithm</th><th>Time</th><th>Extra memory</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Binary search</td><td>O(log n)</td><td>O(1)</td><td>Needs sorted input</td></tr>
+          <tr><td>AVL tree search</td><td>O(log n) search, O(n log n) build</td><td>O(n)</td><td>Rotations keep height ≤ 1.44 log₂ n</td></tr>
+          <tr><td>Dijkstra (binary heap)</td><td>O((V + E) log V)</td><td>O(V + E)</td><td>Non-negative weights only</td></tr>
+          <tr><td>Bellman-Ford</td><td>O(V·E)</td><td>O(V + E)</td><td>Negative weights, detects negative cycles; stops early when nothing changes</td></tr>
+          <tr><td>Floyd-Warshall</td><td>O(V³)</td><td>O(V²)</td><td>All pairs; negative cycle if a diagonal entry becomes negative</td></tr>
+        </tbody>
+      </table>
+      <h3>Interpreting results</h3>
+      <p>Timings depend on the machine, the Python version and the input. Pure Python adds a large
+        constant cost per operation, so two algorithms with the same complexity can differ by a
+        constant factor. Compare growth across sizes rather than single numbers, and report the
+        environment shown under each benchmark.</p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/benchmark.js"></script>
+  <script src="js/experiments.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
